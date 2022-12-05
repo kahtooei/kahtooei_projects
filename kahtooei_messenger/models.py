@@ -7,13 +7,18 @@ class ChatUser(models.Model):
     name = models.CharField(max_length=100)
     username = models.CharField(max_length=50, null=False, unique=True)
     password = models.CharField(max_length=50, null=False)
-    inactive_date = models.BooleanField(default=True)#what happen if a username deleted and want to create again???
+    inactive_date = models.DateTimeField(null=True)
+
+class Tokens(models.Model):
+    user = models.ForeignKey(ChatUser,on_delete=models.CASCADE)
+    token = models.CharField(max_length=100)
+    create_date = models.DateTimeField(auto_now_add=True)
 
 class ChatGroup(models.Model):
     name = models.CharField(max_length=100)
     groupname = models.CharField(max_length=50, null=False, unique=True)
     creator = models.ForeignKey(ChatUser,on_delete=models.CASCADE)
-    delete_date = models.BooleanField(default=True)
+    delete_date = models.DateTimeField(null=True)
 
 class GroupUser(models.Model):
     group = models.ForeignKey(ChatGroup,on_delete=models.CASCADE)

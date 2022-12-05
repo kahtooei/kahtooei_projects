@@ -2,6 +2,7 @@ from channels.generic.websocket import WebsocketConsumer, AsyncWebsocketConsumer
 import json
 from asgiref.sync import async_to_sync
 from .models import Message
+from .helper import getUsernameToken, getUserGroupList
 # from channels import Group
 
 class ChatConsumer(WebsocketConsumer):
@@ -72,19 +73,32 @@ class ChatRoomConsumerAsync(AsyncWebsocketConsumer):
 
 class ChatRoomConsumer(WebsocketConsumer):
     def connect(self):
-        self.myroom = self.scope["url_route"]["kwargs"]["room_name"]
-        self.mygroup = "chat_%s" % self.myroom
-        # Join room group
-        async_to_sync(self.channel_layer.group_add)(
-            self.mygroup, self.channel_name
-        )
-        self.accept()
+        self.token = self.scope["url_route"]["kwargs"]["token"]
+        self.username = getUsernameToken(self.token)
+        self.allGroups = []
+        if self.username:
+            self.personalGroup = "chat_%s" % self.username
+            # Join personal-channel and groups-channels
+            async_to_sync(self.channel_layer.group_add)(
+                self.personalGroup, self.channel_name
+            )
+            groupList = getUserGroupList(self.username)
+            if len(groupList) > 0:
+                for gname in groupList:
+                    grp = "groupchat_%s" % gname
+                    self.allGroups.append(grp)
+                    async_to_sync(self.channel_layer.group_add)(grp, self.channel_name)
+            self.accept()
 
     def disconnect(self, close_code):
         # Leave room group
-        async_to_sync(self.channel_layer.group_discard)(
-            self.mygroup, self.channel_name
-        )
+        if self.username:
+            async_to_sync(self.channel_layer.group_discard)(
+                self.personalGroup, self.channel_name
+            )
+        if len(self.allGroups) > 0:
+            for grp in self.allGroups:
+                async_to_sync(self.channel_layer.group_discard)(grp, self.channel_name)
 
     def receive(self, text_data):
         text_data_json = json.loads(text_data)
