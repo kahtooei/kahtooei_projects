@@ -19,7 +19,7 @@ def getUserGroupList(username):
 
 def fetch_user_messages(username):
     user = ChatUser.objects.filter(username=username).first()
-    msgs = UserRecipient.objects.filter(user=user,receive_date__isnull=True)
+    msgs = UserRecipient.objects.filter(user=user,receive_date__isnull=True).all()
     if msgs.count() > 0:
         return [m.get_for_fetch() for m in msgs]
     return []
@@ -34,9 +34,7 @@ def add_new_message_db(author,content):
     sender = ChatUser.objects.filter(username=author).first()
     msg = Message(author=sender, content=content)
     msg.save()
-    message = msg.as_json()
-    message['id'] = msg.id
-    return message
+    return msg.as_json()
 
 def add_new_recipient_db(messageID,receiver,groupname):
     user = ChatUser.objects.filter(username=receiver).first()
@@ -63,9 +61,10 @@ def getGroupMembers(group):
         return [m.user for m in members]
     return []
 
-def add_group_recipients(messageID,groupname):
+def add_group_recipients(messageID,groupname,author):
     group = ChatGroup.objects.filter(groupname=groupname).first()
     members = getGroupMembers(group)
+    members = [m for m in members if m.username != author]
     for m in members:
         add_new_recipient_db(messageID,m.username,groupname)
     

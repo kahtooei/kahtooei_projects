@@ -49,7 +49,7 @@ class Message(models.Model):
     
     def as_json(self):
         return dict(
-            id = id,
+            id = self.id,
             content=self.content,
             author=self.author.for_message(),
             create_date=self.create_date
@@ -69,10 +69,10 @@ class UserRecipient(models.Model):
     seen_date = models.DateTimeField(null=True)
     
     def get_for_fetch(self):
-        dict(
+        return dict(
             id = self.id,
             message = self.message.as_json(),
-            group = self.group.as_json(),
+            group = self.group.as_json() if self.group else None,
             send_date = self.send_date
         )
 

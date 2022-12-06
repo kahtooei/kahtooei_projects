@@ -118,7 +118,8 @@ class ChatRoomConsumer(WebsocketConsumer):
     
     def fetch_messages(self):
         mesgs = fetch_user_messages(self.username)
-        self.self_send(mesgs)
+        for msg in mesgs:
+            self.self_send(msg)
     def new_message(self,content,receiver):
         groupname = receiver.get("groupname",None)
         username = receiver.get("username",None)
@@ -136,7 +137,7 @@ class ChatRoomConsumer(WebsocketConsumer):
             if checkGroupValidation(self.username,groupname):
                 groupchat = "groupchat_{}".format(groupname)
                 message = add_new_message_db(self.username,content)
-                add_group_recipients(message.get("id"),groupname)
+                add_group_recipients(message.get("id"),groupname,self.username)
                 message['groupname'] = groupname
                 self.other_send(message,groupchat)
             else:
