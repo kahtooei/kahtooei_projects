@@ -49,6 +49,7 @@ class Message(models.Model):
     
     def as_json(self):
         return dict(
+            id = id,
             content=self.content,
             author=self.author.for_message(),
             create_date=self.create_date

@@ -1,4 +1,4 @@
-from .models import Tokens, GroupUser, ChatUser, UserRecipient
+from .models import Tokens, GroupUser, ChatUser, UserRecipient, Message, ChatGroup
 
 #check token and return username
 #check username and return groups
@@ -23,4 +23,53 @@ def fetch_user_messages(username):
     if msgs.count() > 0:
         return [m.get_for_fetch() for m in msgs]
     return []
+
+def checkUserValidation(username):
+    user = ChatUser.objects.filter(username=username,inactive_date__isnull = True).first()
+    if user:
+        return True
+    return False
+
+def add_new_message_db(author,content):
+    sender = ChatUser.objects.filter(username=author).first()
+    msg = Message(author=sender, content=content)
+    msg.save()
+    message = msg.as_json()
+    message['id'] = msg.id
+    return message
+
+def add_new_recipient_db(messageID,receiver,groupname):
+    user = ChatUser.objects.filter(username=receiver).first()
+    msg = Message.objects.get(pk=messageID)
+    grp = None
+    if groupname:
+        grp = ChatGroup.objects.filter(groupname=groupname).first()
+    recipient = UserRecipient(user=user, message=msg, group=grp)
+    recipient.save()
+    # return recipient
+
+def checkGroupValidation(username,groupname):
+    user = ChatUser.objects.filter(username=username,inactive_date__isnull = True).first()
+    group = ChatGroup.objects.filter(groupname=groupname ,delete_date__isnull=True).first()
+    if user and group:
+        groupuser = GroupUser.objects.filter(group=group,user=user,separate_date__isnull=True).first()
+        if groupuser:
+            return True
+    return False
+
+def getGroupMembers(group):
+    members = GroupUser.objects.filter(group=group,separate_date__isnull=True).all()
+    if members.count() > 0:
+        return [m.user for m in members]
+    return []
+
+def add_group_recipients(messageID,groupname):
+    group = ChatGroup.objects.filter(groupname=groupname).first()
+    members = getGroupMembers(group)
+    for m in members:
+        add_new_recipient_db(messageID,m.username,groupname)
+    
+    
+    
+    
     

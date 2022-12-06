@@ -2,7 +2,7 @@ from channels.generic.websocket import WebsocketConsumer, AsyncWebsocketConsumer
 import json
 from asgiref.sync import async_to_sync
 from .models import Message
-from .helper import getUsernameToken, getUserGroupList, fetch_user_messages
+from .helper import getUsernameToken, getUserGroupList, fetch_user_messages, checkUserValidation, add_new_message_db, add_new_recipient_db, checkGroupValidation, add_group_recipients
 # from channels import Group
 
 class ChatConsumer(WebsocketConsumer):
@@ -77,14 +77,14 @@ class ChatRoomConsumer(WebsocketConsumer):
         self.username = getUsernameToken(self.token)
         self.allGroups = []
         if self.username:
-            self.personalGroup = "chat_%s" % self.username
+            self.personalGroup = "chat_{}".format(self.username)
             async_to_sync(self.channel_layer.group_add)(
                 self.personalGroup, self.channel_name
             )
             groupList = getUserGroupList(self.username)
             if len(groupList) > 0:
                 for gname in groupList:
-                    grp = "groupchat_%s" % gname
+                    grp = "groupchat_{}".format(gname)
                     self.allGroups.append(grp)
                     async_to_sync(self.channel_layer.group_add)(grp, self.channel_name)
             self.accept()
@@ -115,17 +115,34 @@ class ChatRoomConsumer(WebsocketConsumer):
         # async_to_sync(self.channel_layer.group_send)(
         #     self.mygroup, {"type": "chat_message", "message": message}
         # )
-
-    # Receive message from room group
-    def chat_message(self, event):
-        message = event["message"]
-        # Send message to WebSocket
-        self.send(text_data=json.dumps({"message": message}))
     
     def fetch_messages(self):
         mesgs = fetch_user_messages(self.username)
         self.self_send(mesgs)
     def new_message(self,content,receiver):
+        groupname = receiver.get("groupname",None)
+        username = receiver.get("username",None)
+        if username:
+            if checkUserValidation(username):
+                chat = "chat_{}".format(username)
+                message = add_new_message_db(self.username,content)
+                add_new_recipient_db(message.get("id"),username,None)
+                self.other_send(message,chat)
+                self.self_send(message)
+            else:
+                invalid = dict(type="invalid user",status=-1)
+                self.self_send(invalid)
+        if groupname:
+            if checkGroupValidation(self.username,groupname):
+                groupchat = "groupchat_{}".format(groupname)
+                message = add_new_message_db(self.username,content)
+                add_group_recipients(message.get("id"),groupname)
+                message['groupname'] = groupname
+                self.other_send(message,groupchat)
+            else:
+                invalid = dict(type="invalid group",status=-2)
+                self.self_send(invalid)
+            
         print("send-message : {}".format(content))
     def self_send(self, message):
         rs = self.send(text_data=str(message))
@@ -137,4 +154,7 @@ class ChatRoomConsumer(WebsocketConsumer):
         print("add to database message received for this user")
     def seen_message(self,messageID):
         print("add to database message received for this user")
-    
+    def chat_message(self, event):
+        message = event["message"]
+        # Send message to WebSocket
+        self.send(text_data=json.dumps({"message": message}))
