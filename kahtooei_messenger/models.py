@@ -8,6 +8,12 @@ class ChatUser(models.Model):
     username = models.CharField(max_length=50, null=False, unique=True)
     password = models.CharField(max_length=50, null=False)
     inactive_date = models.DateTimeField(null=True)
+    
+    def for_message(self):
+        return dict(
+            name = self.name,
+            username = self.username
+        )
 
 class Tokens(models.Model):
     user = models.ForeignKey(ChatUser,on_delete=models.CASCADE)
@@ -19,6 +25,13 @@ class ChatGroup(models.Model):
     groupname = models.CharField(max_length=50, null=False, unique=True)
     creator = models.ForeignKey(ChatUser,on_delete=models.CASCADE)
     delete_date = models.DateTimeField(null=True)
+    
+    def as_json(self):
+        return dict(
+            name = self.name,
+            groupname = self.groupname,
+            creator = self.creator.for_message()
+        )
 
 class GroupUser(models.Model):
     group = models.ForeignKey(ChatGroup,on_delete=models.CASCADE)
@@ -37,7 +50,7 @@ class Message(models.Model):
     def as_json(self):
         return dict(
             content=self.content,
-            sender=self.sender.username,
+            author=self.author.for_message(),
             create_date=self.create_date
         )
     def get_lastMessages():
@@ -51,8 +64,16 @@ class UserRecipient(models.Model):
     user = models.ForeignKey(ChatUser,on_delete=models.CASCADE)
     group = models.ForeignKey(ChatGroup,on_delete=models.CASCADE, null=True)
     send_date = models.DateTimeField(auto_now_add=True)
-    recive_date = models.DateTimeField(null=True)
+    receive_date = models.DateTimeField(null=True)
     seen_date = models.DateTimeField(null=True)
+    
+    def get_for_fetch(self):
+        dict(
+            id = self.id,
+            message = self.message.as_json(),
+            group = self.group.as_json(),
+            send_date = self.send_date
+        )
 
 
 

@@ -1,4 +1,4 @@
-from .models import Tokens, GroupUser, ChatUser
+from .models import Tokens, GroupUser, ChatUser, UserRecipient
 
 #check token and return username
 #check username and return groups
@@ -16,3 +16,11 @@ def getUserGroupList(username):
     if gu.count() > 0:
         return [g.group.groupname for g in gu]
     return []
+
+def fetch_user_messages(username):
+    user = ChatUser.objects.filter(username=username).first()
+    msgs = UserRecipient.objects.filter(user=user,receive_date__isnull=True)
+    if msgs.count() > 0:
+        return [m.get_for_fetch() for m in msgs]
+    return []
+    

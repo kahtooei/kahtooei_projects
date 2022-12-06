@@ -2,7 +2,7 @@ from channels.generic.websocket import WebsocketConsumer, AsyncWebsocketConsumer
 import json
 from asgiref.sync import async_to_sync
 from .models import Message
-from .helper import getUsernameToken, getUserGroupList
+from .helper import getUsernameToken, getUserGroupList, fetch_user_messages
 # from channels import Group
 
 class ChatConsumer(WebsocketConsumer):
@@ -78,7 +78,6 @@ class ChatRoomConsumer(WebsocketConsumer):
         self.allGroups = []
         if self.username:
             self.personalGroup = "chat_%s" % self.username
-            # Join personal-channel and groups-channels
             async_to_sync(self.channel_layer.group_add)(
                 self.personalGroup, self.channel_name
             )
@@ -91,7 +90,6 @@ class ChatRoomConsumer(WebsocketConsumer):
             self.accept()
 
     def disconnect(self, close_code):
-        # Leave room group
         if self.username:
             async_to_sync(self.channel_layer.group_discard)(
                 self.personalGroup, self.channel_name
@@ -104,13 +102,16 @@ class ChatRoomConsumer(WebsocketConsumer):
         text_data_json = json.loads(text_data)
         message = text_data_json.get('message',None)
         command = text_data_json.get('command',None)
+        values = text_data_json.get('values',None)
         if command :
             if command == "fetch":
                 self.fetch_messages()
             elif command == "send":
-                self.new_message(message)
-            elif command == "other":
-                self.other_send(message)
+                self.new_message(message,values)
+            elif command == "receive":
+                self.receive_message(values)
+            elif command == "seen":
+                self.seen_message(values)
         # async_to_sync(self.channel_layer.group_send)(
         #     self.mygroup, {"type": "chat_message", "message": message}
         # )
@@ -122,17 +123,18 @@ class ChatRoomConsumer(WebsocketConsumer):
         self.send(text_data=json.dumps({"message": message}))
     
     def fetch_messages(self):
-        mesgs = Message.get_lastMessages()
-        [self.self_send(m.as_json()) for m in mesgs]
-    def new_message(self,content):
+        mesgs = fetch_user_messages(self.username)
+        self.self_send(mesgs)
+    def new_message(self,content,receiver):
         print("send-message : {}".format(content))
-    def send_msg(self,message):
-        rs = async_to_sync(self.channel_layer.group_send)(
-            self.mygroup, {"type": "chat_message", "message": str(message)}
-        )
     def self_send(self, message):
         rs = self.send(text_data=str(message))
-    def other_send(self, message):
-        rs = async_to_sync(self.channel_layer.group_send)(
-            "myGroup", {"type": "chat_message", "message": str(message)}
+    def other_send(self, message, group):
+        async_to_sync(self.channel_layer.group_send)(
+            group, {"type": "chat_message", "message": str(message)}
         )
+    def receive_message(self,messageID):
+        print("add to database message received for this user")
+    def seen_message(self,messageID):
+        print("add to database message received for this user")
+    
