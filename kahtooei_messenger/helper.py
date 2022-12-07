@@ -1,5 +1,5 @@
 from .models import Tokens, GroupUser, ChatUser, UserRecipient, Message, ChatGroup
-
+from datetime import datetime
 #check token and return username
 #check username and return groups
 
@@ -68,7 +68,27 @@ def add_group_recipients(messageID,groupname,author):
     for m in members:
         add_new_recipient_db(messageID,m.username,groupname)
     
+def set_message_received(messageID,username):
+    message = Message.objects.get(pk=messageID)
+    user = ChatUser.objects.filter(username=username).first()
+    recipient = UserRecipient.objects.filter(message=message,user=user, receive_date__isnull=True).first()
+    if recipient:
+        recipient.receive_date = datetime.utcnow()
+        recipient.save()
     
-    
-    
+def set_message_seen(messageID,username):
+    message = Message.objects.get(pk=messageID)
+    user = ChatUser.objects.filter(username=username).first()
+    recipient = UserRecipient.objects.filter(message=message,user=user, seen_date__isnull=True).first()
+    if recipient:
+        current_time = datetime.utcnow()
+        recipient.seen_date = datetime.utcnow()
+        if not recipient.receive_date:
+            recipient.receive_date = current_time
+        recipient.save()
+
+
+
+
+
     

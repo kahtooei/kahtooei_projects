@@ -2,7 +2,7 @@ from channels.generic.websocket import WebsocketConsumer, AsyncWebsocketConsumer
 import json
 from asgiref.sync import async_to_sync
 from .models import Message
-from .helper import getUsernameToken, getUserGroupList, fetch_user_messages, checkUserValidation, add_new_message_db, add_new_recipient_db, checkGroupValidation, add_group_recipients
+from .helper import getUsernameToken, getUserGroupList, fetch_user_messages, checkUserValidation, add_new_message_db, add_new_recipient_db, checkGroupValidation, add_group_recipients, set_message_received, set_message_seen
 # from channels import Group
 
 class ChatConsumer(WebsocketConsumer):
@@ -112,9 +112,6 @@ class ChatRoomConsumer(WebsocketConsumer):
                 self.receive_message(values)
             elif command == "seen":
                 self.seen_message(values)
-        # async_to_sync(self.channel_layer.group_send)(
-        #     self.mygroup, {"type": "chat_message", "message": message}
-        # )
     
     def fetch_messages(self):
         mesgs = fetch_user_messages(self.username)
@@ -128,7 +125,11 @@ class ChatRoomConsumer(WebsocketConsumer):
                 chat = "chat_{}".format(username)
                 message = add_new_message_db(self.username,content)
                 add_new_recipient_db(message.get("id"),username,None)
+                message['status'] = 1
+                message['type'] = "new user message"
                 self.other_send(message,chat)
+                message['status'] = 3
+                message['type'] = "my user message"
                 self.self_send(message)
             else:
                 invalid = dict(type="invalid user",status=-1)
@@ -139,6 +140,8 @@ class ChatRoomConsumer(WebsocketConsumer):
                 message = add_new_message_db(self.username,content)
                 add_group_recipients(message.get("id"),groupname,self.username)
                 message['groupname'] = groupname
+                message['status'] = 2
+                message['type'] = "new group message"
                 self.other_send(message,groupchat)
             else:
                 invalid = dict(type="invalid group",status=-2)
@@ -151,10 +154,14 @@ class ChatRoomConsumer(WebsocketConsumer):
         async_to_sync(self.channel_layer.group_send)(
             group, {"type": "chat_message", "message": str(message)}
         )
-    def receive_message(self,messageID):
-        print("add to database message received for this user")
-    def seen_message(self,messageID):
-        print("add to database message received for this user")
+    def receive_message(self,data):
+        messageID = data.get("messageID",None)
+        if messageID:
+            set_message_received(messageID,self.username)
+    def seen_message(self,data):
+        messageID = data.get("messageID",None)
+        if messageID:
+            set_message_seen(messageID,self.username)
     def chat_message(self, event):
         message = event["message"]
         # Send message to WebSocket

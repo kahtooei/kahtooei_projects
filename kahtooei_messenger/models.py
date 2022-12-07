@@ -67,7 +67,6 @@ class UserRecipient(models.Model):
     send_date = models.DateTimeField(auto_now_add=True)
     receive_date = models.DateTimeField(null=True)
     seen_date = models.DateTimeField(null=True)
-    
     def get_for_fetch(self):
         return dict(
             id = self.id,
