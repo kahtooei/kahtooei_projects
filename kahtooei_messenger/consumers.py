@@ -81,14 +81,14 @@ class ChatRoomConsumer(WebsocketConsumer):
             async_to_sync(self.channel_layer.group_add)(
                 self.personalGroup, self.channel_name
             )
-            groupList = getUserGroupList(self.username)
-            if len(groupList) > 0:
-                for gname in groupList:
-                    grp = "groupchat_{}".format(gname)
+            self.groupList = getUserGroupList(self.username)
+            if len(self.groupList) > 0:
+                for gname in self.groupList:
+                    grp = "groupchat_{}".format(gname['groupname'])
                     self.allGroups.append(grp)
                     async_to_sync(self.channel_layer.group_add)(grp, self.channel_name)
             self.accept()
-
+            self.self_send({"groups": self.groupList, "type_data": "groups"})
     def disconnect(self, close_code):
         if self.username:
             async_to_sync(self.channel_layer.group_discard)(
@@ -97,7 +97,6 @@ class ChatRoomConsumer(WebsocketConsumer):
         if len(self.allGroups) > 0:
             for grp in self.allGroups:
                 async_to_sync(self.channel_layer.group_discard)(grp, self.channel_name)
-
     def receive(self, text_data):
         text_data_json = json.loads(text_data)
         message = text_data_json.get('message',None)
@@ -111,11 +110,11 @@ class ChatRoomConsumer(WebsocketConsumer):
             elif command == "receive":
                 self.receive_message(values)
             elif command == "seen":
-                self.seen_message(values)
-    
+                self.seen_message(values)   
     def fetch_messages(self):
         mesgs = fetch_user_messages(self.username)
         for msg in mesgs:
+            msg['type_data'] = "fetch_message"
             self.self_send(msg)
     def new_message(self,content,receiver):
         groupname = receiver.get("groupname",None)
@@ -125,11 +124,11 @@ class ChatRoomConsumer(WebsocketConsumer):
                 chat = "chat_{}".format(username)
                 message = add_new_message_db(self.username,content)
                 add_new_recipient_db(message.get("id"),username,None)
-                message['status'] = 1
-                message['type'] = "new user message"
+                message['status'] = 1 #message from user
+                message['type_data'] = "new_message"
                 self.other_send(message,chat)
-                message['status'] = 3
-                message['type'] = "my user message"
+                message['status'] = 3 #self message
+                message['type_data'] = "new_message"
                 self.self_send(message)
             else:
                 invalid = dict(type="invalid user",status=-1)
@@ -140,19 +139,18 @@ class ChatRoomConsumer(WebsocketConsumer):
                 message = add_new_message_db(self.username,content)
                 add_group_recipients(message.get("id"),groupname,self.username)
                 message['groupname'] = groupname
-                message['status'] = 2
-                message['type'] = "new group message"
+                message['status'] = 2 #message from group
+                message['type_data'] = "new_message"
                 self.other_send(message,groupchat)
             else:
                 invalid = dict(type="invalid group",status=-2)
                 self.self_send(invalid)
             
-        print("send-message : {}".format(content))
     def self_send(self, message):
-        rs = self.send(text_data=str(message))
+        rs = self.send(text_data=json.dumps({"message": message}))
     def other_send(self, message, group):
         async_to_sync(self.channel_layer.group_send)(
-            group, {"type": "chat_message", "message": str(message)}
+            group, {"type": "chat_message", "message": message}
         )
     def receive_message(self,data):
         messageID = data.get("messageID",None)

@@ -52,10 +52,8 @@ class Message(models.Model):
             id = self.id,
             content=self.content,
             author=self.author.for_message(),
-            create_date=self.create_date
+            create_date=str(self.create_date)
         )
-    def get_lastMessages():
-        return Message.objects.order_by("-create_date").all()
     
     def __str__(self):
         return self.sender.username
@@ -72,7 +70,7 @@ class UserRecipient(models.Model):
             id = self.id,
             message = self.message.as_json(),
             group = self.group.as_json() if self.group else None,
-            send_date = self.send_date
+            send_date = str(self.send_date)
         )
 
 

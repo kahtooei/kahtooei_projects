@@ -1,7 +1,38 @@
 from .models import Tokens, GroupUser, ChatUser, UserRecipient, Message, ChatGroup
 from datetime import datetime
+from uuid import uuid4
 #check token and return username
 #check username and return groups
+
+def checkLogin(username,password):
+    user = ChatUser.objects.filter(username=username,password=password,inactive_date__isnull=True).first()
+    if user == None:
+        return {'status': False}
+    else:
+        return {'status': True, 'user': user}
+
+def registerUser(fullName,username,password):
+    user = ChatUser(username=username,name=fullName,password=password)
+    try:
+        user.save()
+        return {'status': True, 'user': user}
+    except Exception as e:
+        return {'status': False, 'error': str(e)}
+
+def createNewToken():
+    return str(uuid4())
+
+def addNewUserToken(user,token):
+    try:
+        token = Tokens(user=user,token=token)
+        token.save()
+        return True
+    except:
+        return False
+    
+
+
+
 
 def getUsernameToken(token):
     t = Tokens.objects.filter(token = token).first()
@@ -14,7 +45,7 @@ def getUserGroupList(username):
     user = ChatUser.objects.filter(username=username).first()
     gu = GroupUser.objects.filter(user=user).all()
     if gu.count() > 0:
-        return [g.group.groupname for g in gu]
+        return [g.group.as_json() for g in gu]
     return []
 
 def fetch_user_messages(username):
