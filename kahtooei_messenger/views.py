@@ -1,6 +1,6 @@
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
-from .helper import checkLogin,createNewToken,addNewUserToken,registerUser,getUsernameToken,getUserByUsername
+from .helper import checkLogin,createNewToken,addNewUserToken,registerUser,getUsernameToken,getUserByUsername,checkExistGroup,createNewChatGroup,addUserToGroup
 
 # Create your views here.
 
@@ -45,7 +45,27 @@ def newChat(request):
     token = request.POST['token']
     if getUsernameToken(token):
         user = getUserByUsername(username)
-        if user != None:
+        if user:
             return JsonResponse({'statusCode': 200, 'fullName': user.name},safe=False)
         return JsonResponse({'statusCode': 400, 'error': 'User Not Exist'},safe=False)
     return JsonResponse({'statusCode': 401, 'error': 'Invalid Token'},safe=False)
+
+@csrf_exempt
+def createGroup(request):
+    groupname = request.POST['groupname']
+    name = request.POST['name']
+    token = request.POST['token']
+    user = getUsernameToken(token)
+    if user:
+        group = checkExistGroup(groupname)
+        if not group:
+            res = createNewChatGroup(groupname,name,user)
+            if res['status']:
+                addUserToGroup(user,res['group'])
+                return JsonResponse({'statusCode': 200, 'fullName': user.name},safe=False)
+            else:
+                return JsonResponse({'statusCode': 400, 'error': res['error']},safe=False)
+        return JsonResponse({'statusCode': 400, 'error': 'Duplicate Groupname'},safe=False)
+    return JsonResponse({'statusCode': 401, 'error': 'Invalid Token'},safe=False)
+
+

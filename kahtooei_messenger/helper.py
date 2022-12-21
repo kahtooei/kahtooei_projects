@@ -22,6 +22,39 @@ def registerUser(fullName,username,password):
 def createNewToken():
     return str(uuid4()).replace("-","")
 
+def createNewChatGroup(groupname,name,user):
+    group = ChatGroup(groupname=groupname,name=name,creator=user)
+    try:
+        group.save()
+        return {'status': True, 'group': group}
+    except Exception as e:
+        return {'status': False, 'error': str(e)}
+
+def addUserToGroup(user,group):
+    join = GroupUser.objects.filter(user=user,group=group).first()
+    if not join:
+        join = GroupUser(user=user,group=group)
+        join.save()
+        return {'status':True}
+    else:
+        if join.separate_date:
+            return {'status': False, 'error': 'Duplicate Join'}
+        else:
+            join.separate_date = None
+            join.save()
+            return {'status':True}
+
+def joinToGroup(user,groupname):
+    group = ChatGroup.objects.filter(groupname=groupname).first()
+    if group:
+        join = GroupUser.objects.filter(user=user,group=group).first()
+        if join:
+            return True
+        else:
+            return False
+    else:
+        return False
+
 def addNewUserToken(user,token):
     try:
         token = Tokens(user=user,token=token)
@@ -33,7 +66,7 @@ def addNewUserToken(user,token):
 def getUsernameToken(token):
     t = Tokens.objects.filter(token = token).first()
     try:
-        return t.user.username
+        return t.user
     except:
         return None
 
@@ -41,6 +74,13 @@ def getUserByUsername(username):
     user = ChatUser.objects.filter(username=username,inactive_date__isnull=True).first()
     if user != None:
         return user
+    else:
+        return None
+
+def checkExistGroup(groupname):
+    group = ChatGroup.objects.filter(groupname=groupname).first()
+    if group != None:
+        return group
     else:
         return None
 

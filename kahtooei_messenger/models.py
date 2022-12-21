@@ -38,6 +38,8 @@ class GroupUser(models.Model):
     user = models.ForeignKey(ChatUser,on_delete=models.CASCADE)
     join_date = models.DateTimeField(auto_now_add=True)
     separate_date = models.DateTimeField(null=True)
+    class Meta:
+        unique_together = ('group', 'user')
     
 #join datetime
 
