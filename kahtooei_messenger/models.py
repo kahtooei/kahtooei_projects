@@ -65,11 +65,12 @@ class UserRecipient(models.Model):
     send_date = models.DateTimeField(auto_now_add=True)
     receive_date = models.DateTimeField(null=True)
     seen_date = models.DateTimeField(null=True)
-    def get_for_fetch(self):
+    def get_for_fetch(self,username):
         return dict(
             id = self.id,
             message = self.message.as_json(),
             group = self.group.as_json() if self.group else None,
+            receiver = username,
             send_date = str(self.send_date)
         )
 

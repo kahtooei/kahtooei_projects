@@ -20,7 +20,7 @@ def registerUser(fullName,username,password):
         return {'status': False, 'error': str(e)}
 
 def createNewToken():
-    return str(uuid4())
+    return str(uuid4()).replace("-","")
 
 def addNewUserToken(user,token):
     try:
@@ -29,16 +29,19 @@ def addNewUserToken(user,token):
         return True
     except:
         return False
-    
-
-
-
 
 def getUsernameToken(token):
     t = Tokens.objects.filter(token = token).first()
     try:
         return t.user.username
     except:
+        return None
+
+def getUserByUsername(username):
+    user = ChatUser.objects.filter(username=username,inactive_date__isnull=True).first()
+    if user != None:
+        return user
+    else:
         return None
 
 def getUserGroupList(username):
@@ -52,7 +55,7 @@ def fetch_user_messages(username):
     user = ChatUser.objects.filter(username=username).first()
     msgs = UserRecipient.objects.filter(user=user,receive_date__isnull=True).all()
     if msgs.count() > 0:
-        return [m.get_for_fetch() for m in msgs]
+        return [m.get_for_fetch(username) for m in msgs]
     return []
 
 def checkUserValidation(username):

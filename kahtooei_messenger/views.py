@@ -1,6 +1,6 @@
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
-from .helper import checkLogin,createNewToken,addNewUserToken,registerUser
+from .helper import checkLogin,createNewToken,addNewUserToken,registerUser,getUsernameToken,getUserByUsername
 
 # Create your views here.
 
@@ -38,3 +38,14 @@ def register(request):
             return JsonResponse({'statusCode': 400, 'error': 'Token Error'},safe=False)
     else:
         return JsonResponse({'statusCode': 400, 'error': result['error']},safe=False)
+
+@csrf_exempt
+def newChat(request):
+    username = request.POST['username']
+    token = request.POST['token']
+    if getUsernameToken(token):
+        user = getUserByUsername(username)
+        if user != None:
+            return JsonResponse({'statusCode': 200, 'fullName': user.name},safe=False)
+        return JsonResponse({'statusCode': 400, 'error': 'User Not Exist'},safe=False)
+    return JsonResponse({'statusCode': 401, 'error': 'Invalid Token'},safe=False)

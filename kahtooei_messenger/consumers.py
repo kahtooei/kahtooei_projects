@@ -123,6 +123,7 @@ class ChatRoomConsumer(WebsocketConsumer):
             if checkUserValidation(username):
                 chat = "chat_{}".format(username)
                 message = add_new_message_db(self.username,content)
+                message['receiver'] = username
                 add_new_recipient_db(message.get("id"),username,None)
                 message['status'] = 1 #message from user
                 message['type_data'] = "new_message"
